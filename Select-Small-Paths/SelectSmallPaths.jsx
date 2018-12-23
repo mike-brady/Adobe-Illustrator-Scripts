@@ -68,4 +68,4 @@ function main() {
   app.redraw();
 }
 
-main()
+main();
