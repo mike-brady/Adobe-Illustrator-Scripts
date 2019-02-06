@@ -1,5 +1,3 @@
-#target illustrator
-
 /*
   Auto Mirror Bleed
 
@@ -35,9 +33,13 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 */
+
+#target illustrator
+
 function main() {
   if(app.documents.length > 0) {
-    var layers = app.activeDocument.selection;
+    var idoc = app.activeDocument
+    var layers = idoc.selection;
 
     var length = layers.length;
 
@@ -58,27 +60,27 @@ function main() {
     bleedSize *= 72;
 
     for(i=0;i<length;i++) {
-      var coords = layers[i].geometricBounds;
+      var image = layers[i];
+      var parent = image.parent;
+
+      var coords = image.geometricBounds;
       var xLeft = coords[0];
       var yTop = coords[1];
       var width = Math.abs(coords[2] - xLeft);
       var height = Math.abs(yTop - coords[3]);
-
-      var parent = layers[i].parent;
       var newGroup = app.activeDocument.groupItems.add();
       newGroup.moveToBeginning(parent);
-      newGroup.name = layers[i].name;
+      newGroup.name = image.name;
 
       var bleedGroup = app.activeDocument.groupItems.add();
       bleedGroup.name = "bleed";
 
       bleedGroup.moveToBeginning(newGroup);
-      layers[i].moveToBeginning(newGroup);
+      image.moveToBeginning(newGroup);
 
       var bleedLayers = [];
       var bleedMasks = [];
       for(j=0;j<8;j++) {
-        var name = layers[i].name;
         var vertical = '';
         var horizontal = '';
 
@@ -86,26 +88,27 @@ function main() {
         var clipHeight = height;
 
         if(j%3 == 0) {
-          vertical = '-top';
+          vertical = 'top-';
         } else if(j%3 == 1) {
-          vertical = '-bottom';
+          vertical = 'bottom-';
         }
 
         if(j<3) {
-          horizontal = '-left';
+          horizontal = 'left-';
         } else if(j>4) {
-          horizontal = '-right';
+          horizontal = 'right-';
         }
+        var layerName = vertical + horizontal + "bleed"
 
-        bleedLayers[j] = layers[i].duplicate();
+        bleedLayers[j] = image.duplicate();
 
         var deltaY = 0;
         if(vertical != '') {
           clipHeight = bleedSize;
           bleedLayers[j].transform(app.getScaleMatrix(100,-100));
-          if(vertical == '-top') {
+          if(vertical == 'top-') {
             deltaY = height;
-          } else if(vertical == '-bottom') {
+          } else if(vertical == 'bottom-') {
             deltaY = height*-1;
           }
         }
@@ -114,24 +117,15 @@ function main() {
         if(horizontal != '') {
           clipWidth = bleedSize;
           bleedLayers[j].transform(app.getScaleMatrix(-100,100));
-          if(horizontal == '-left') {
+          if(horizontal == 'left-') {
             deltaX = width*-1;
-          } else if(horizontal == '-right') {
+          } else if(horizontal == 'right-') {
             deltaX = width;
           }
         }
-        var layerName = layers[i].name + vertical + horizontal + "-bleed"
-        bleedLayers[j].name = layerName;
-
-        var clippingGroup = bleedGroup.groupItems.add();
-        clippingGroup.name = layerName;
-
         bleedLayers[j].transform(app.getTranslationMatrix(deltaX,deltaY));
 
-        bleedLayers[j].moveToBeginning(clippingGroup);
-
         bleedMasks[j] = app.activeDocument.pathItems.rectangle(yTop,xLeft,clipWidth,clipHeight);
-
         if(deltaX < 0) {
           deltaX = bleedSize*-1;
         }
@@ -140,12 +134,27 @@ function main() {
         }
         bleedMasks[j].transform(app.getTranslationMatrix(deltaX,deltaY));
 
-        bleedMasks[j].clipping = true;
-        bleedMasks[j].moveToBeginning(clippingGroup);
+        var rasterOpts = new RasterizeOptions;
+        rasterOpts.antiAliasingMethod = AntiAliasingMethod.ARTOPTIMIZED;
+        rasterOpts.resolution = objectResolution(image);
+        bleedLayers[j] = idoc.rasterize(bleedLayers[j], bleedMasks[j].geometricBounds, rasterOpts);
+        bleedLayers[j].name = layerName;
+        bleedLayers[j].moveToBeginning(bleedGroup);
 
-        clippingGroup.clipped = true;
+        bleedMasks[j].remove();
       }
     }
+  }
+
+  /*
+    Source: https://aiscripts.com/image-crop-script/
+  */
+  function objectResolution(obj) {
+      var resw = Math.abs(72/obj.matrix.mValueA); // thanks to Moluapple for this
+      var resh = Math.abs(72/obj.matrix.mValueD);
+      var objRes = Math.round((resw+resh)/2);
+
+      return objRes;
   }
 }
 
