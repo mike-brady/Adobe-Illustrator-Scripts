@@ -36,32 +36,104 @@
 
 #target illustrator
 
+var idoc;
+var selectedLayers;
+
 function main() {
   if(app.documents.length > 0) {
-    var idoc = app.activeDocument
-    var layers = idoc.selection;
+    idoc = app.activeDocument
+    selectedLayers = idoc.selection;
 
-    var length = layers.length;
+    var dlg = createDialog();
+    dlg.show();
+  }
 
-    var bleedSize = prompt("Enter Bleed", .125, "Auto Mirror Bleed");
+  /*
+    Source: https://aiscripts.com/image-crop-script/
+  */
+  function objectResolution(obj) {
+      var resw = Math.abs(72/obj.matrix.mValueA); // thanks to Moluapple for this
+      var resh = Math.abs(72/obj.matrix.mValueD);
+      var objRes = Math.round((resw+resh)/2);
 
-    //If user clicks the Cancel button
-    if(bleedSize==null) {
-      return;
+      return objRes;
+  }
+
+  function createDialog() {
+    var spacing = 4;
+
+    var dlg = new Window('dialog', 'Auto Mirror Bleed');
+    dlg.orientation = 'column';
+    dlg.alignChildren = 'left';
+    dlg.spacing = spacing;
+
+    dlg.bleedLocPnl = dlg.add('panel', undefined, undefined);
+
+    dlg.bleedLocPnl.bleedTopCb = dlg.bleedLocPnl.add('checkbox', undefined, undefined);
+    dlg.bleedLocPnl.bleedTopCb.value = true;
+
+    dlg.bleedLocPnl.grp1 = dlg.bleedLocPnl.add('group', undefined, undefined);
+    dlg.bleedLocPnl.grp1.orientation = 'row';
+    dlg.bleedLocPnl.grp1.bleedLeftCb = dlg.bleedLocPnl.grp1.add('checkbox', undefined, undefined);
+    dlg.bleedLocPnl.grp1.bleedLeftCb.value = true;
+    dlg.bleedLocPnl.grp1.bleedGrp = dlg.bleedLocPnl.grp1.add('group', undefined, undefined);
+    dlg.bleedLocPnl.grp1.bleedGrp.size = [45,41];
+    dlg.bleedLocPnl.grp1.bleedGrp.orientation = 'row';
+    dlg.bleedLocPnl.grp1.bleedGrp.spacing = 2;
+    dlg.bleedLocPnl.grp1.bleedGrp.bleedEt = dlg.bleedLocPnl.grp1.bleedGrp.add('edittext', undefined, '.125"');
+    dlg.bleedLocPnl.grp1.bleedGrp.bleedEt.addEventListener('focus',function(e) { bleedFocus(e); }, false);
+    dlg.bleedLocPnl.grp1.bleedGrp.bleedEt.addEventListener('blur',function(e) { bleedBlur(e); }, false);
+    dlg.bleedLocPnl.grp1.bleedRightCb = dlg.bleedLocPnl.grp1.add('checkbox', undefined, undefined);
+    dlg.bleedLocPnl.grp1.bleedRightCb.value = true;
+
+    dlg.bleedLocPnl.bleedBottomCb = dlg.bleedLocPnl.add('checkbox', undefined, undefined);
+    dlg.bleedLocPnl.bleedBottomCb.value = true;
+
+    dlg.addBtn = dlg.add('button', undefined, 'Add Bleed');
+    dlg.addBtn.onClick = addBleed;
+
+    return dlg;
+  }
+
+  function bleedFocus(event) {
+    event.target.text = removeUnit(event.target.text);
+  }
+
+  function bleedBlur(event) {
+    if(isNaN(event.target.text)) {
+      event.target.text = '';
+    } else {
+      event.target.text = addUnit(event.target.text);
+    }
+  }
+
+  function addUnit(str) {
+    return removeUnit(str) + '"';
+  }
+
+  function removeUnit(str) {
+    return str.match(/^[0-9]*\.?[0-9]*/)[0];
+  }
+
+  function getIndex(item, parent) {
+    for(var i=0; i<parent.groupItems; i++) {
+      if(parent.groupItems.index(i) == item) {
+        return i;
+      }
     }
 
-    bleedSize = parseFloat(bleedSize);
-    if(isNaN(bleedSize)) {
-      alert("Error: Input must be a number.");
-      return;
-    }
+    return 99999;
+  }
+
+  function addBleed() {
+    bleedSize = parseFloat(removeUnit(dlg.bleedLocPnl.grp1.bleedGrp.bleedEt.text));
 
     //Convert inch input into points
     bleedSize *= 72;
 
-    for(i=0;i<length;i++) {
-      var image = layers[i];
-      var parent = image.parent;
+    for(i=0;i<selectedLayers.length;i++) {
+      var image = selectedLayers[i];
+      var parent = image.layer;
 
       var coords = image.geometricBounds;
       var xLeft = coords[0];
@@ -69,7 +141,7 @@ function main() {
       var width = Math.abs(coords[2] - xLeft);
       var height = Math.abs(yTop - coords[3]);
       var newGroup = app.activeDocument.groupItems.add();
-      newGroup.moveToBeginning(parent);
+      newGroup.move(image, ElementPlacement.PLACEAFTER);
       newGroup.name = image.name;
 
       var bleedGroup = app.activeDocument.groupItems.add();
@@ -88,14 +160,30 @@ function main() {
         var clipHeight = height;
 
         if(j%3 == 0) {
+          //Only add top bleed if checkbox is checked
+          if(dlg.bleedLocPnl.bleedTopCb.value == false) {
+            continue;
+          }
           vertical = 'top-';
         } else if(j%3 == 1) {
+          //Only add bottom bleed if checkbox is checked
+          if(dlg.bleedLocPnl.bleedBottomCb.value == false) {
+            continue;
+          }
           vertical = 'bottom-';
         }
 
         if(j<3) {
+          //Only add left bleed if checkbox is checked
+          if(dlg.bleedLocPnl.grp1.bleedLeftCb.value == false) {
+            continue;
+          }
           horizontal = 'left-';
         } else if(j>4) {
+          //Only add right bleed if checkbox is checked
+          if(dlg.bleedLocPnl.grp1.bleedRightCb.value == false) {
+            continue;
+          }
           horizontal = 'right-';
         }
         var layerName = vertical + horizontal + "bleed"
@@ -144,17 +232,7 @@ function main() {
         bleedMasks[j].remove();
       }
     }
-  }
-
-  /*
-    Source: https://aiscripts.com/image-crop-script/
-  */
-  function objectResolution(obj) {
-      var resw = Math.abs(72/obj.matrix.mValueA); // thanks to Moluapple for this
-      var resh = Math.abs(72/obj.matrix.mValueD);
-      var objRes = Math.round((resw+resh)/2);
-
-      return objRes;
+    dlg.close();
   }
 }
 
