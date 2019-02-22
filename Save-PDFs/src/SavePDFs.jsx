@@ -29,7 +29,7 @@ var pdfSaves = [
 
 function main() {
   if(app.documents.length > 0) {
-    var idoc = app.activeDocument
+    var idoc = app.activeDocument;
 
     var fullName = idoc.fullName;
     var name = idoc.name;
@@ -47,7 +47,7 @@ function main() {
 
       app.activeDocument.close();
       app.open(new File(fullName));
-      idoc = app.activeDocument
+      idoc = app.activeDocument;
     }
 
     alert('PDFs Saved');
