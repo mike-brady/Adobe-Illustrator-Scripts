@@ -74,23 +74,38 @@ function main() {
 
     dlg.bleedLocPnl.grp1 = dlg.bleedLocPnl.add('group', undefined, undefined);
     dlg.bleedLocPnl.grp1.orientation = 'row';
+
     dlg.bleedLocPnl.grp1.bleedLeftCb = dlg.bleedLocPnl.grp1.add('checkbox', undefined, undefined);
     dlg.bleedLocPnl.grp1.bleedLeftCb.value = true;
+
     dlg.bleedLocPnl.grp1.bleedGrp = dlg.bleedLocPnl.grp1.add('group', undefined, undefined);
-    dlg.bleedLocPnl.grp1.bleedGrp.size = [45,41];
+    dlg.bleedLocPnl.grp1.bleedGrp.size = [85,81];
+    dlg.bleedLocPnl.grp1.bleedGrp.margins = [10, 0, 10, 0];
     dlg.bleedLocPnl.grp1.bleedGrp.orientation = 'row';
     dlg.bleedLocPnl.grp1.bleedGrp.spacing = 2;
-    dlg.bleedLocPnl.grp1.bleedGrp.bleedEt = dlg.bleedLocPnl.grp1.bleedGrp.add('edittext', undefined, '.125"');
+    dlg.bleedLocPnl.grp1.bleedGrp.bleedEt = dlg.bleedLocPnl.grp1.bleedGrp.add('edittext {text: \'.125"\', justify: "right"}', undefined, '.125"');
+    dlg.bleedLocPnl.grp1.bleedGrp.bleedEt.size = [65,18];
     dlg.bleedLocPnl.grp1.bleedGrp.bleedEt.addEventListener('focus',function(e) { bleedFocus(e); }, false);
     dlg.bleedLocPnl.grp1.bleedGrp.bleedEt.addEventListener('blur',function(e) { bleedBlur(e); }, false);
+    dlg.bleedLocPnl.grp1.bleedGrp.bleedEt.addEventListener ('keydown', function (e) { enterKeyPressed(e); }, false);
+
     dlg.bleedLocPnl.grp1.bleedRightCb = dlg.bleedLocPnl.grp1.add('checkbox', undefined, undefined);
     dlg.bleedLocPnl.grp1.bleedRightCb.value = true;
 
     dlg.bleedLocPnl.bleedBottomCb = dlg.bleedLocPnl.add('checkbox', undefined, undefined);
     dlg.bleedLocPnl.bleedBottomCb.value = true;
 
-    dlg.addBtn = dlg.add('button', undefined, 'Add Bleed');
-    dlg.addBtn.onClick = addBleed;
+    dlg.grp2 = dlg.add('group', undefined, undefined);
+    dlg.grp2.orientation = 'row';
+
+    dlg.grp2.addBtn = dlg.grp2.add('button', undefined, 'Cancel');
+    dlg.grp2.addBtn.onClick = function() { dlg.close(); };
+
+    dlg.grp2.addBtn = dlg.grp2.add('button', undefined, 'Add Bleed');
+    dlg.grp2.addBtn.onClick = addBleed;
+
+
+    dlg.bleedLocPnl.grp1.bleedGrp.bleedEt.active = true;
 
     return dlg;
   }
@@ -123,6 +138,12 @@ function main() {
     }
 
     return 99999;
+  }
+
+  function enterKeyPressed (e) {
+    if(e.keyName === "Enter"){
+      addBleed();
+    }
   }
 
   function addBleed() {
